@@ -577,18 +577,16 @@
     </div>
   </footer>
 
-  <!-- Toda la lógica: Google Search + Firebase + app -->
+  <!-- Toda la lógica: Firebase + Google Search + app -->
   <script type="module">
     // ==============================
-    // Firebase (App + Analytics + Firestore)
+    // Firebase (App + Firestore)
     // ==============================
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
     import {
       getFirestore,
       doc,
       setDoc,
-      getDoc,
       collection,
       getDocs
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -604,15 +602,16 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     const db = getFirestore(app);
+
+    console.log("✅ Firebase inicializado");
 
     // ==============================
     // Google Custom Search JSON API
     // ==============================
 
-    // 👉 Aquí pegas TU API KEY nueva de Google
-    const SEARCH_API_KEY = "PON_AQUI_TU_API_KEY_DE_GOOGLE";
+    // 👉 Pega aquí TU nueva API Key de Google (Custom Search JSON API)
+    const SEARCH_API_KEY = "AIzaSyBLJoODUbvgaxime6_NVvEfmRD2YqkLj-E";
 
     // Tu Search Engine ID (cx)
     const SEARCH_CX = "c72fe2e20aa5d4eb3";
@@ -915,7 +914,7 @@
     async function searchDoctors(filters) {
       const apiConfigured =
         SEARCH_API_KEY &&
-        SEARCH_API_KEY !== AIzaSyBLJoODUbvgaxime6_NVvEfmRD2YqkLj-E &&
+        SEARCH_API_KEY !== "PON_AQUI_TU_API_KEY_DE_GOOGLE" &&
         SEARCH_CX &&
         SEARCH_CX !== "";
 
@@ -1463,6 +1462,8 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+      console.log("✅ DOM listo, iniciando app Reclutador Médicos");
+
       (async () => {
         loadContactsFromStorage();
         await loadContactsFromFirestoreAndMerge();
@@ -1480,6 +1481,8 @@
           const location = document.getElementById("locationInput").value;
           const institutionType = document.getElementById("institutionTypeSelect").value;
 
+          console.log("🔍 Buscando con filtros:", { specialty, location, institutionType });
+
           selectedDoctorIds.clear();
           updateSelectionPanelUI();
           showStatusMessage("Buscando médicos...");
@@ -1488,9 +1491,7 @@
           try {
             const results = await searchDoctors({ specialty, location, institutionType });
             currentResults = results.map((doc) => {
-              if (!doc.id) {
-                doc.id = buildDoctorId(doc);
-              }
+              if (!doc.id) doc.id = buildDoctorId(doc);
               ensureDoctorRecord(doc);
               return doc;
             });
