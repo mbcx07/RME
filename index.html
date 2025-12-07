@@ -510,7 +510,7 @@
           </button>
           <span class="chip">
             <span class="chip-dot"></span>
-            Usa Google; se sincroniza con la nube (Firestore)
+            Google Custom Search + Firestore
           </span>
         </div>
         <div id="statusMessage" class="status-message"></div>
@@ -522,6 +522,11 @@
           <div id="resultsCount">0 médicos encontrados</div>
         </div>
         <div id="resultsContainer" class="results-list"></div>
+        <div style="margin-top:8px; text-align:center;">
+          <button id="loadMoreButton" class="btn-outline" type="button" style="display:none;">
+            ⬇️ Cargar más resultados (página 2)
+          </button>
+        </div>
       </div>
     </section>
 
@@ -576,7 +581,7 @@
     </div>
   </footer>
 
-  <!-- JS: Firebase + Buscador + Lógica -->
+  <!-- JS: Firebase + Firestore + Google Custom Search + App -->
   <script type="module">
     'use strict';
 
@@ -604,7 +609,7 @@
     const db = getFirestore(app);
     console.log("✅ Firebase inicializado");
 
-    // --------- Google Custom Search ----------
+    // --------- Google Custom Search JSON API ----------
     const SEARCH_API_KEY = "AIzaSyBLJoODUbvgaxime6_NVvEfmRD2YqkLj-E";
     const SEARCH_CX = "c72fe2e20aa5d4eb3";
     const SEARCH_API_ENDPOINT = "https://www.googleapis.com/customsearch/v1";
@@ -615,26 +620,26 @@
     let currentResults = [];
     let selectedDoctorIds = new Set();
 
+    // paginación
+    let lastFilters = null;
+    let pagesLoaded = 0;       // cuántas páginas hemos cargado en esta búsqueda
+    const MAX_PAGES = 2;       // máximo 2 páginas: 20 resultados
+    let nextStartIndex = null; // 1, 11, 21 ...
+
     // --------- Utilidades ----------
     function normalizeString(str) {
       return (str || "").toString().trim().toLowerCase();
     }
 
     function buildDoctorId(doctor) {
-      return (
+      const raw =
         normalizeString(doctor.name) +
         "|" +
         normalizeString(doctor.institution || "") +
         "|" +
-        normalizeString(doctor.url || "")
-      );
-    }
-
-    // Convierte un id en uno seguro para Firestore (sin '/')
-    function makeFirestoreId(id) {
-      return (id || "")
-        .toString()
-        .replace(/\//g, "_");
+        normalizeString(doctor.url || "");
+      // ID seguro para Firestore: sin "/", longitud limitada
+      return raw.replace(/\//g, "_").slice(0, 150);
     }
 
     function formatDateTime(date) {
@@ -677,17 +682,9 @@
 
     async function saveContactToFirestore(record) {
       if (!record || !record.id) return;
-
-      // Usamos un ID seguro para Firestore (sin '/')
-      const safeId = makeFirestoreId(record.id);
-
       try {
-        await setDoc(
-          doc(db, "contacts", safeId),
-          { ...record, firestoreId: safeId },
-          { merge: true }
-        );
-        console.log("✅ Guardado en Firestore:", safeId);
+        await setDoc(doc(db, "contacts", record.id), record, { merge: true });
+        console.log("✅ Guardado en Firestore:", record.id);
       } catch (error) {
         console.error("Error guardando en Firestore", error);
       }
@@ -842,7 +839,7 @@
     }
 
     // --------- Google API ----------
-    async function fetchDoctorsFromApi(filters) {
+    async function fetchDoctorsFromApi(filters, start = 1) {
       const parts = [];
 
       if (filters.specialty) {
@@ -855,7 +852,7 @@
         parts.push(filters.location);
       }
 
-      parts.push("México hospital clínica consultorio");
+      parts.push("México hospital clínica consultorio directorio médico");
 
       const query = parts.join(" ");
 
@@ -863,7 +860,8 @@
         key: SEARCH_API_KEY,
         cx: SEARCH_CX,
         q: query,
-        num: "10",
+        num: "10",                  // 10 resultados por página
+        start: String(start),       // 1, 11, 21...
         lr: "lang_es",
         gl: "mx"
       });
@@ -914,7 +912,7 @@
       return mapped;
     }
 
-    async function searchDoctors(filters) {
+    async function searchDoctors(filters, start = 1) {
       const apiConfigured =
         SEARCH_API_KEY &&
         SEARCH_API_KEY !== "PON_AQUI_TU_API_KEY_DE_GOOGLE" &&
@@ -923,12 +921,15 @@
 
       try {
         if (apiConfigured) {
-          showStatusMessage("Buscando médicos en Google (Custom Search)...");
-          const results = await fetchDoctorsFromApi(filters);
+          const isFirstPage = start === 1;
+          showStatusMessage(
+            isFirstPage ? "Buscando médicos en Google (Custom Search)..." : "Cargando más resultados..."
+          );
+          const results = await fetchDoctorsFromApi(filters, start);
           showStatusMessage("");
-          if (!results.length) {
+          if (!results.length && isFirstPage) {
             showStatusMessage(
-              "Google no devolvió resultados para esos criterios. Puedes ajustar filtros o revisar la configuración del buscador."
+              "Google no devolvió resultados para esos criterios. Ajusta filtros o revisa la configuración del buscador."
             );
           }
           return results;
@@ -1010,10 +1011,6 @@
 
       currentResults.forEach((doctor) => {
         const record = ensureDoctorRecord(doctor);
-
-        // Guardar cada resultado en Firestore y localStorage
-        saveContactToFirestore(record);
-        saveContactsToStorage();
 
         const card = document.createElement("div");
         card.classList.add("card", "doctor-card");
@@ -1487,59 +1484,89 @@
         const exportCsvBtn = document.getElementById("exportCsvBtn");
         const generateMsgBtn = document.getElementById("generateMessageBtn");
         const copyInvitationBtn = document.getElementById("copyInvitationBtn");
+        const loadMoreButton = document.getElementById("loadMoreButton");
 
-        async function handleSearch() {
+        async function handleSearch(firstPage = true) {
           const specialty = document.getElementById("specialtyInput").value;
           const location = document.getElementById("locationInput").value;
           const institutionType = document.getElementById("institutionTypeSelect").value;
 
-          console.log("🔍 Buscando con filtros:", { specialty, location, institutionType });
+          if (firstPage) {
+            lastFilters = { specialty, location, institutionType };
+            pagesLoaded = 0;
+            nextStartIndex = 1;
+            currentResults = [];
+            selectedDoctorIds.clear();
+            updateSelectionPanelUI();
+          }
 
-          selectedDoctorIds.clear();
-          updateSelectionPanelUI();
-          showStatusMessage("Buscando médicos...");
+          if (!lastFilters) return;
 
+          const startIndex = firstPage ? 1 : nextStartIndex || 1;
+          console.log("🔍 Buscando con filtros:", lastFilters, "start=", startIndex);
+
+          showStatusMessage(firstPage ? "Buscando médicos..." : "Cargando más resultados...");
           searchButton.disabled = true;
+          loadMoreButton.disabled = true;
+
           try {
-            const results = await searchDoctors({ specialty, location, institutionType });
-            currentResults = results.map((doc) => {
+            const results = await searchDoctors(lastFilters, startIndex);
+            const newDocs = results.filter(
+              (doc) => !currentResults.some((r) => r.id === doc.id)
+            );
+            currentResults = currentResults.concat(newDocs.map((doc) => {
               if (!doc.id) doc.id = buildDoctorId(doc);
               ensureDoctorRecord(doc);
+              saveContactToFirestore(contactsRegistry[doc.id]);
+              saveContactsToStorage();
               return doc;
-            });
+            }));
             renderResults();
-            if (!results.length) {
-              // mensaje ya puesto
+            showStatusMessage("");
+
+            pagesLoaded += 1;
+            if (pagesLoaded < MAX_PAGES && results.length === 10) {
+              nextStartIndex = startIndex + 10;
+              loadMoreButton.style.display = "inline-flex";
             } else {
-              showStatusMessage("");
+              loadMoreButton.style.display = "none";
             }
           } finally {
             searchButton.disabled = false;
+            loadMoreButton.disabled = false;
           }
         }
 
         searchButton.addEventListener("click", (e) => {
           e.preventDefault();
-          handleSearch();
+          handleSearch(true);
         });
 
         searchForm.addEventListener("submit", (e) => {
           e.preventDefault();
-          handleSearch();
+          handleSearch(true);
+        });
+
+        loadMoreButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (pagesLoaded < MAX_PAGES && nextStartIndex) {
+            handleSearch(false);
+          }
         });
 
         exportCsvBtn.addEventListener("click", () => exportSelectedToCsv());
         generateMsgBtn.addEventListener("click", () => generateInvitationMessage());
         copyInvitationBtn.addEventListener("click", () => copyInvitationToClipboard());
 
-        // Búsqueda inicial (mock o Google)
-        const results = await searchDoctors({ specialty: "", location: "", institutionType: "" });
-        currentResults = results.map((doc) => {
+        // Búsqueda inicial (mock o Google según config)
+        const initialResults = await searchDoctors({ specialty: "", location: "", institutionType: "" }, 1);
+        currentResults = initialResults.map((doc) => {
           if (!doc.id) doc.id = buildDoctorId(doc);
           ensureDoctorRecord(doc);
           return doc;
         });
         renderResults();
+        loadMoreButton.style.display = "none";
       })();
     });
   </script>
