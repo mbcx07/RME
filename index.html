@@ -1,3 +1,867 @@
+      <!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reclutador de Médicos Especialistas – IMSS BCS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --imss-green: #00695c;
+      --imss-green-dark: #004d40;
+      --imss-green-light: #e0f2f1;
+      --accent-green: #26a69a;
+      --error-red: #e53935;
+      --warning-amber: #ffb300;
+      --text-main: #263238;
+      --text-muted: #607d8b;
+      --bg-main: #f5f7f8;
+      --border-soft: #cfd8dc;
+      --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      --radius-lg: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    h1, h2, h3, h4 {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+
+    a { color: var(--imss-green-dark); }
+
+    .app-header {
+      background: linear-gradient(135deg, var(--imss-green-dark), var(--imss-green));
+      color: white;
+      padding: 16px 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .app-header-title { font-size: 1.3rem; }
+    .app-header-subtitle { font-size: 0.9rem; opacity: 0.9; margin-top: 4px; }
+
+    .app-main {
+      display: flex;
+      flex-direction: row;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    .search-section {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .side-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 260px;
+    }
+
+    .card {
+      background-color: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--card-shadow);
+      padding: 14px 16px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .card-title { font-size: 1rem; font-weight: 600; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+
+    .badge-pending {
+      background-color: #eceff1;
+      color: var(--text-muted);
+      border-color: #cfd8dc;
+    }
+    .badge-interested {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border-color: #66bb6a;
+    }
+    .badge-rejected {
+      background-color: #ffebee;
+      color: #c62828;
+      border-color: #ef5350;
+    }
+    .badge-followup {
+      background-color: #fff8e1;
+      color: #ef6c00;
+      border-color: #ffb300;
+    }
+
+    .search-form {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-field label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      padding: 8px 9px;
+      border-radius: 8px;
+      border: 1px solid var(--border-soft);
+      font: inherit;
+      min-height: 34px;
+      resize: vertical;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      outline: 2px solid var(--accent-green);
+      outline-offset: 1px;
+      border-color: var(--accent-green);
+    }
+
+    .search-button {
+      padding: 9px 12px;
+      background-color: var(--imss-green);
+      color: white;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--imss-green-dark);
+    }
+
+    .search-button:hover { background-color: var(--imss-green-dark); }
+    .search-button:disabled { opacity: 0.7; cursor: default; }
+    .search-button span.icon { font-size: 1.1rem; }
+
+    .status-message {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      min-height: 18px;
+    }
+    .status-message.error { color: var(--error-red); }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .doctor-card {
+      border-left: 4px solid var(--accent-green);
+      position: relative;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .doctor-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .doctor-card--contacted {
+      background-color: var(--imss-green-light);
+      border-left-color: var(--imss-green-dark);
+    }
+
+    .doctor-meta {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.4fr);
+      gap: 8px;
+      font-size: 0.83rem;
+      margin-bottom: 6px;
+    }
+
+    .doctor-meta-item { color: var(--text-muted); }
+    .doctor-meta-label { font-weight: 500; color: var(--text-main); }
+
+    .doctor-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+      align-items: center;
+    }
+
+    .btn-ghost {
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background-color: #fafafa;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-ghost:hover { background-color: #eceff1; }
+    .btn-ghost.primary {
+      border-color: var(--accent-green);
+      color: var(--imss-green-dark);
+    }
+
+    .doctor-followup {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: 8px;
+      margin-top: 4px;
+      align-items: flex-start;
+    }
+
+    .doctor-followup textarea {
+      min-height: 42px;
+      font-size: 0.8rem;
+    }
+
+    .doctor-followup select {
+      font-size: 0.8rem;
+      min-height: 34px;
+    }
+
+    .doctor-select-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .side-section-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--imss-green-dark);
+    }
+
+    .selection-summary {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .selected-list {
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      padding-left: 0;
+      margin: 0;
+      list-style: none;
+      border-radius: 8px;
+      background-color: #fafafa;
+      border: 1px dashed var(--border-soft);
+    }
+
+    .selected-list li {
+      padding: 4px 8px;
+      border-bottom: 1px solid #eceff1;
+    }
+    .selected-list li:last-child { border-bottom: none; }
+
+    .panel-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-outline {
+      background-color: white;
+      border-radius: 999px;
+      border: 1px solid var(--imss-green);
+      color: var(--imss-green-dark);
+      padding: 6px 9px;
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-outline:hover { background-color: var(--imss-green-light); }
+
+    .panel-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .invitation-textarea {
+      width: 100%;
+      min-height: 120px;
+      border-radius: 8px;
+      border: 1px solid var(--border-soft);
+      padding: 8px 9px;
+      font: inherit;
+      font-size: 0.8rem;
+      resize: vertical;
+    }
+
+    .invitation-textarea:focus {
+      outline: 2px solid var(--accent-green);
+      outline-offset: 1px;
+      border-color: var(--accent-green);
+    }
+
+    .contacted-list {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .contacted-item {
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      background-color: #fafafa;
+      padding: 7px 8px;
+      font-size: 0.78rem;
+    }
+
+    .contacted-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .contacted-name { font-weight: 600; color: var(--text-main); }
+
+    .contacted-meta {
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      margin-bottom: 4px;
+    }
+
+    .contacted-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.1fr);
+      gap: 6px;
+      align-items: flex-start;
+    }
+
+    .contacted-controls textarea {
+      min-height: 40px;
+      font-size: 0.78rem;
+    }
+
+    .contacted-controls select {
+      font-size: 0.78rem;
+      min-height: 32px;
+    }
+
+    .app-footer {
+      max-width: 1240px;
+      margin: 0 auto 12px;
+      padding: 0 16px;
+    }
+
+    .app-footer-inner {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background-color: #eceff1;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      gap: 4px;
+    }
+
+    .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+    }
+
+    .doctor-card.status-pendiente { border-left-color: var(--accent-green); }
+    .doctor-card.status-interesado { border-left-color: #43a047; }
+    .doctor-card.status-rechazo { border-left-color: #e53935; }
+    .doctor-card.status-seguimiento { border-left-color: #ffb300; }
+
+    @media (max-width: 960px) {
+      .app-main { flex-direction: column; }
+      .side-panel { min-width: 0; }
+      .results-list { max-height: none; }
+    }
+
+    @media (max-width: 720px) {
+      .search-form { grid-template-columns: minmax(0, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="app-header-title">
+        Reclutador de Médicos Especialistas – IMSS BCS
+      </div>
+      <div class="app-header-subtitle">
+        Herramienta interna para localizar, contactar y dar seguimiento a médicos especialistas usando información pública.
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="search-section">
+      <div class="card">
+        <form id="searchForm" class="search-form">
+          <div class="form-field">
+            <label for="specialtyInput">Especialidad</label>
+            <input id="specialtyInput" type="text" placeholder="Ej. Anestesiólogo, Pediatra, Ginecólogo..." />
+          </div>
+          <div class="form-field">
+            <label for="locationInput">Estado o ciudad</label>
+            <input id="locationInput" type="text" placeholder="Ej. Ciudad de México, Jalisco, BCS..." />
+          </div>
+          <div class="form-field">
+            <label for="institutionTypeSelect">Tipo de institución (opcional)</label>
+            <select id="institutionTypeSelect">
+              <option value="">Cualquiera</option>
+              <option value="publica">Hospital público</option>
+              <option value="privada">Clínica u hospital privado</option>
+              <option value="consultorio">Consultorio</option>
+            </select>
+          </div>
+        </form>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+          <button id="searchButton" class="search-button">
+            <span class="icon">🔍</span>
+            <span>Buscar médicos</span>
+          </button>
+          <span class="chip">
+            <span class="chip-dot"></span>
+            Usa Google; se sincroniza con la nube (Firestore)
+          </span>
+        </div>
+        <div id="statusMessage" class="status-message"></div>
+      </div>
+
+      <div class="card">
+        <div class="results-header">
+          <div>Resultados de búsqueda</div>
+          <div id="resultsCount">0 médicos encontrados</div>
+        </div>
+        <div id="resultsContainer" class="results-list"></div>
+      </div>
+    </section>
+
+    <aside class="side-panel">
+      <div class="card">
+        <div class="side-section-title">Selección para contactar</div>
+        <div class="selection-summary">
+          Seleccionados: <strong><span id="selectedCount">0</span></strong> médico(s)
+        </div>
+        <ul id="selectedList" class="selected-list"></ul>
+        <div class="panel-buttons">
+          <button id="exportCsvBtn" class="btn-outline" type="button">
+            📄 Exportar seleccionados a CSV
+          </button>
+          <button id="generateMessageBtn" class="btn-outline" type="button">
+            ✉️ Generar mensaje de invitación
+          </button>
+        </div>
+        <div class="panel-subtitle">
+          El CSV incluye nombre, especialidad, ubicación, institución, contacto, URL, comentarios y estatus.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="side-section-title">Plantilla de mensaje de invitación</div>
+        <textarea id="invitationTemplate" class="invitation-textarea"></textarea>
+        <div class="panel-buttons" style="margin-top:6px;">
+          <button id="copyInvitationBtn" class="btn-outline" type="button">
+            📋 Copiar mensaje
+          </button>
+        </div>
+        <div class="panel-subtitle">
+          Usa este texto en correo o WhatsApp. Si seleccionas solo un médico, se personalizará con su nombre y especialidad.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="side-section-title">Médicos contactados</div>
+        <div class="panel-subtitle">
+          Listado de médicos con estatus distinto de "Pendiente". Se guarda en la nube (Firestore).
+        </div>
+        <div id="contactedList" class="contacted-list"></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="app-footer">
+    <div class="app-footer-inner">
+      Esta herramienta usa información obtenida de fuentes públicas en internet únicamente con fines de reclutamiento profesional
+      responsable. Se recomienda respetar la Ley Federal de Protección de Datos Personales en Posesión de los Particulares y
+      normativas aplicables. No acceder a datos privados ni a sistemas que requieran autenticación.
+    </div>
+  </footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      collection,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCx7j30Y2BIE-DkGWvkwg1OUHPnT3JFnIs",
+      authDomain: "reclutador-de-medicos-e.firebaseapp.com",
+      projectId: "reclutador-de-medicos-e",
+      storageBucket: "reclutador-de-medicos-e.firebasestorage.app",
+      messagingSenderId: "224579445862",
+      appId: "1:224579445862:web:61b2c17a04518f67b279a7",
+      measurementId: "G-S6TJF62TXY"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    console.log("✅ Firebase inicializado");
+
+    const SEARCH_API_KEY = "AIzaSyBLJoODUbvgaxime6_NVvEfmRD2YqkLj-E";
+    const SEARCH_CX = "c72fe2e20aa5d4eb3";
+    const SEARCH_API_ENDPOINT = "https://www.googleapis.com/customsearch/v1";
+
+    const LOCAL_STORAGE_KEY = "imssRecruitmentContactsV1";
+    let contactsRegistry = {};
+    let currentResults = [];
+    let selectedDoctorIds = new Set();
+
+    function normalizeString(str) {
+      return (str || "").toString().trim().toLowerCase();
+    }
+
+    function buildDoctorId(doctor) {
+      return (
+        normalizeString(doctor.name) +
+        "|" +
+        normalizeString(doctor.institution || "") +
+        "|" +
+        normalizeString(doctor.url || "")
+      );
+    }
+
+    function formatDateTime(date) {
+      if (!date) return "";
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return "";
+      return (
+        d.toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "2-digit" }) +
+        " " +
+        d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+      );
+    }
+
+    function showStatusMessage(text, isError = false) {
+      const el = document.getElementById("statusMessage");
+      el.textContent = text || "";
+      el.classList.toggle("error", !!isError);
+    }
+
+    function saveContactsToStorage() {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(contactsRegistry));
+      } catch (err) {
+        console.error("Error guardando en localStorage", err);
+      }
+    }
+
+    function loadContactsFromStorage() {
+      try {
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          contactsRegistry = parsed;
+        }
+      } catch (err) {
+        console.error("Error leyendo de localStorage", err);
+      }
+    }
+
+    async function saveContactToFirestore(record) {
+      if (!record || !record.id) return;
+      try {
+        await setDoc(doc(db, "contacts", record.id), record, { merge: true });
+        console.log("✅ Guardado en Firestore:", record.id);
+      } catch (error) {
+        console.error("Error guardando en Firestore", error);
+      }
+    }
+
+    async function loadContactsFromFirestoreAndMerge() {
+      try {
+        const snap = await getDocs(collection(db, "contacts"));
+        snap.forEach((d) => {
+          const data = d.data();
+          const id = data.id || d.id;
+          if (!id) return;
+          if (!contactsRegistry[id]) {
+            contactsRegistry[id] = data;
+          } else {
+            contactsRegistry[id] = { ...contactsRegistry[id], ...data };
+          }
+        });
+      } catch (error) {
+        console.error("Error leyendo desde Firestore", error);
+      }
+    }
+
+    function ensureDoctorRecord(doctor) {
+      const id = doctor.id;
+      if (!contactsRegistry[id]) {
+        contactsRegistry[id] = {
+          id,
+          name: doctor.name || "",
+          specialty: doctor.specialty || "",
+          city: doctor.city || "",
+          state: doctor.state || "",
+          institution: doctor.institution || "",
+          email: doctor.email || "",
+          phone: doctor.phone || "",
+          url: doctor.url || "",
+          status: "Pendiente",
+          notes: "",
+          updatedAt: null
+        };
+      } else {
+        const rec = contactsRegistry[id];
+        rec.name = doctor.name || rec.name;
+        rec.specialty = doctor.specialty || rec.specialty;
+        rec.city = doctor.city || rec.city;
+        rec.state = doctor.state || rec.state;
+        rec.institution = doctor.institution || rec.institution;
+        rec.email = doctor.email || rec.email;
+        rec.phone = doctor.phone || rec.phone;
+        rec.url = doctor.url || rec.url;
+      }
+      return contactsRegistry[id];
+    }
+
+    function updateDoctorRecord(id, updates) {
+      if (!contactsRegistry[id]) return;
+      Object.assign(contactsRegistry[id], updates);
+      contactsRegistry[id].updatedAt = new Date().toISOString();
+      saveContactsToStorage();
+      saveContactToFirestore(contactsRegistry[id]);
+      renderContactedPanel();
+      updateResultsVisualState();
+    }
+
+    const MOCK_DOCTORS = [
+      {
+        name: "Dra. Ana María López",
+        specialty: "Ginecología y Obstetricia",
+        city: "La Paz",
+        state: "Baja California Sur",
+        institution: "Hospital Privado del Mar",
+        email: "ana.lopez@example.com",
+        phone: "+52 612 123 4567",
+        url: "https://ejemplo-directorio-medico.mx/ana-maria-lopez"
+      },
+      {
+        name: "Dr. Carlos Hernández",
+        specialty: "Anestesiología",
+        city: "Tijuana",
+        state: "Baja California",
+        institution: "Hospital General Tijuana",
+        email: "carlos.hernandez@example.com",
+        phone: "+52 664 234 5678",
+        url: "https://ejemplo-directorio-medico.mx/carlos-hernandez"
+      },
+      {
+        name: "Dra. Patricia Gómez",
+        specialty: "Pediatría",
+        city: "Guadalajara",
+        state: "Jalisco",
+        institution: "Hospital Infantil de Occidente",
+        email: "patricia.gomez@example.com",
+        phone: "+52 33 3456 7890",
+        url: "https://ejemplo-directorio-medico.mx/patricia-gomez"
+      },
+      {
+        name: "Dr. Miguel Torres",
+        specialty: "Cardiología",
+        city: "Ciudad de México",
+        state: "Ciudad de México",
+        institution: "Instituto Nacional de Cardiología",
+        email: "miguel.torres@example.com",
+        phone: "+52 55 4567 8901",
+        url: "https://ejemplo-directorio-medico.mx/miguel-torres"
+      },
+      {
+        name: "Dra. Laura Sánchez",
+        specialty: "Medicina Interna",
+        city: "Culiacán",
+        state: "Sinaloa",
+        institution: "Clínica del Pacífico",
+        email: "laura.sanchez@example.com",
+        phone: "+52 667 567 8901",
+        url: "https://ejemplo-directorio-medico.mx/laura-sanchez"
+      }
+    ].map((doc) => {
+      const id = buildDoctorId(doc);
+      return { id, ...doc };
+    });
+
+    function fetchDoctorsFromMock(filters) {
+      const spec = normalizeString(filters.specialty);
+      const loc = normalizeString(filters.location);
+      const inst = normalizeString(filters.institutionType);
+
+      const results = MOCK_DOCTORS.filter((doc) => {
+        const matchSpec = !spec || normalizeString(doc.specialty).includes(spec);
+        const matchLoc =
+          !loc ||
+          normalizeString(doc.city).includes(loc) ||
+          normalizeString(doc.state).includes(loc);
+
+        const isPublic =
+          /general|instituto|imss|issste|hospital civil|hospital regional/i.test(
+            doc.institution || ""
+          );
+        const isPrivate =
+          /privad|clínica|clinica|sanatorio|medicenter/i.test(doc.institution || "");
+
+        let matchInst = true;
+        if (inst === "publica") matchInst = isPublic;
+        if (inst === "privada") matchInst = isPrivate;
+        if (inst === "consultorio") matchInst = !isPublic && !isPrivate;
+
+        return matchSpec && matchLoc && matchInst;
+      });
+
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(results), 300);
+      });
+    }
+
+    async function fetchDoctorsFromApi(filters) {
+      const parts = [];
+
+      if (filters.specialty) {
+        parts.push(`médico especialista ${filters.specialty}`);
+      } else {
+        parts.push("médico especialista");
+      }
+
+      if (filters.location) {
+        parts.push(filters.location);
+      }
+
+      parts.push("México hospital clínica consultorio");
+
+      const query = parts.join(" ");
+
+      const params = new URLSearchParams({
+        key: SEARCH_API_KEY,
+        cx: SEARCH_CX,
+        q: query,
+        num: "10",
+        lr: "lang_es",
+        gl: "mx"
+      });
+
+      const url = `${SEARCH_API_ENDPOINT}?${params.toString()}`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Error en la respuesta de Google Custom Search");
+      }
+
+      const data = await response.json();
+      const items = data.items || [];
+
+      const mapped = items.map((item) => {
+        const title = item.title || "";
+        the review is truncated but we must finish; continue.
+
+
+We must keep going to finish code.
+::contentReference[oaicite:0]{index=0}
         const snippet = item.snippet || "";
         const link = item.link || "";
 
