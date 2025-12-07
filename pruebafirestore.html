@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prueba Firestore – Reclutador Médicos</title>
+</head>
+<body style="font-family: Arial; padding: 20px;">
+
+  <h2>🔍 Prueba de conexión con Firestore</h2>
+
+  <p>
+    Este archivo sirve para verificar si Firestore está funcionando correctamente.
+    Cuando presiones el botón, debería crearse un documento dentro de la colección
+    <strong>contacts</strong> en Firestore.
+  </p>
+
+  <button id="btnTest"
+    style="padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; cursor: pointer;">
+    Probar Firestore
+  </button>
+
+  <pre id="log"
+    style="margin-top: 1rem; background:#111; color:#0f0; padding:10px; max-width:600px; min-height:100px;">
+  </pre>
+
+  <!-- SCRIPT DE PRUEBA -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // ⚠️ USA TU CONFIGURACIÓN REAL DE FIREBASE AQUÍ
+    const firebaseConfig = {
+      apiKey: "AIzaSyCx7j30Y2BIE-DkGWvkwg1OUHPnT3JFnIs",
+      authDomain: "reclutador-de-medicos-e.firebaseapp.com",
+      projectId: "reclutador-de-medicos-e",
+      storageBucket: "reclutador-de-medicos-e.firebasestorage.app",
+      messagingSenderId: "224579445862",
+      appId: "1:224579445862:web:61b2c17a04518f67b279a7",
+      measurementId: "G-S6TJF62TXY"
+    };
+
+    // Inicializar Firebase y Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app); // Usa la base (default)
+
+    // Función para mostrar mensajes en pantalla
+    function log(msg) {
+      const el = document.getElementById("log");
+      el.textContent += msg + "\n";
+      console.log(msg);
+    }
+
+    // Evento del botón
+    document.getElementById("btnTest").addEventListener("click", async () => {
+      log("Intentando guardar en Firestore...");
+
+      try {
+        const now = new Date().toISOString();
+        await setDoc(doc(db, "contacts", "test-desde-archivo-simple"), {
+          name: "Prueba desde archivo simple",
+          createdAt: now
+        });
+
+        log("✅ Guardado correcto en contacts/test-desde-archivo-simple");
+        alert("✔ Documento guardado en Firestore.\nRevisa Firestore → Datos → contacts.");
+      } catch (e) {
+        console.error(e);
+        const msg = "❌ Error guardando en Firestore: " + (e.message || e);
+        log(msg);
+        alert(msg);
+      }
+    });
+  </script>
+
+</body>
+</html>
