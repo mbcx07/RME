@@ -610,12 +610,8 @@
     // Google Custom Search JSON API
     // ==============================
 
-    // 👉 Pega aquí TU nueva API Key de Google (Custom Search JSON API)
-    const SEARCH_API_KEY = "AIzaSyBLJoODUbvgaxime6_NVvEfmRD2YqkLj-E";
-
-    // Tu Search Engine ID (cx)
-    const SEARCH_CX = "c72fe2e20aa5d4eb3";
-
+    const SEARCH_API_KEY = "AIzaSyBLJoODUbvgaxime6_NVvEfmRD2YqkLj-E"; // tu key
+    const SEARCH_CX = "c72fe2e20aa5d4eb3"; // tu cx
     const SEARCH_API_ENDPOINT = "https://www.googleapis.com/customsearch/v1";
 
     // ==============================
@@ -681,14 +677,25 @@
       }
     }
 
+    // --- Guarda 1 registro en Firestore ---
     async function saveContactToFirestore(record) {
+      if (!record || !record.id) {
+        console.warn("Intento de guardar sin id:", record);
+        return;
+      }
       try {
         await setDoc(doc(db, "contacts", record.id), record, { merge: true });
+        console.log("✅ Guardado en Firestore:", record.id);
       } catch (error) {
         console.error("Error guardando en Firestore", error);
+        showStatusMessage(
+          "No se pudo guardar en la nube (Firestore). Revisa la consola para más detalles.",
+          true
+        );
       }
     }
 
+    // --- Carga registros previos desde Firestore y los fusiona con localStorage ---
     async function loadContactsFromFirestoreAndMerge() {
       try {
         const snap = await getDocs(collection(db, "contacts"));
@@ -702,6 +709,7 @@
             contactsRegistry[id] = { ...contactsRegistry[id], ...data };
           }
         });
+        console.log("📥 Contacts cargados desde Firestore:", Object.keys(contactsRegistry).length);
       } catch (error) {
         console.error("Error leyendo desde Firestore", error);
       }
@@ -738,12 +746,17 @@
       return contactsRegistry[id];
     }
 
-    function updateDoctorRecord(id, updates) {
-      if (!contactsRegistry[id]) return;
-      Object.assign(contactsRegistry[id], updates);
-      contactsRegistry[id].updatedAt = new Date().toISOString();
+    // --- AHORA ASYNC para asegurar guardado ---
+    async function updateDoctorRecord(id, updates) {
+      const rec = contactsRegistry[id];
+      if (!rec) {
+        console.warn("updateDoctorRecord sin registro para id:", id);
+        return;
+      }
+      Object.assign(rec, updates);
+      rec.updatedAt = new Date().toISOString();
       saveContactsToStorage();
-      saveContactToFirestore(contactsRegistry[id]);
+      await saveContactToFirestore(rec);
       renderContactedPanel();
       updateResultsVisualState();
     }
@@ -1124,8 +1137,8 @@
         const notesTextarea = document.createElement("textarea");
         notesTextarea.value = record.notes || "";
         notesTextarea.placeholder = "Ej. Ya se le envió correo el 10/12, pidió más información, etc.";
-        notesTextarea.addEventListener("change", () => {
-          updateDoctorRecord(doctor.id, { notes: notesTextarea.value });
+        notesTextarea.addEventListener("change", async () => {
+          await updateDoctorRecord(doctor.id, { notes: notesTextarea.value });
         });
         notesField.appendChild(notesLabel);
         notesField.appendChild(notesTextarea);
@@ -1142,9 +1155,9 @@
           if (record.status === opt) option.selected = true;
           statusSelect.appendChild(option);
         });
-        statusSelect.addEventListener("change", () => {
+        statusSelect.addEventListener("change", async () => {
           const newStatus = statusSelect.value || "Pendiente";
-          updateDoctorRecord(doctor.id, { status: newStatus });
+          await updateDoctorRecord(doctor.id, { status: newStatus });
         });
         statusField.appendChild(statusLabel);
         statusField.appendChild(statusSelect);
@@ -1353,7 +1366,7 @@
             "[Tu nombre]\n" +
             "[Tu puesto]\n" +
             "IMSS Baja California Sur\n" +
-            "[Tus datos de contacto]";
+            "[Tus datos de contacto]`;
           return;
         }
       }
@@ -1428,8 +1441,8 @@
         notesLabel.textContent = "Comentarios";
         const notesTextarea = document.createElement("textarea");
         notesTextarea.value = rec.notes || "";
-        notesTextarea.addEventListener("change", () => {
-          updateDoctorRecord(rec.id, { notes: notesTextarea.value });
+        notesTextarea.addEventListener("change", async () => {
+          await updateDoctorRecord(rec.id, { notes: notesTextarea.value });
         });
         notesField.appendChild(notesLabel);
         notesField.appendChild(notesTextarea);
@@ -1446,9 +1459,9 @@
           if (rec.status === opt) option.selected = true;
           statusSelect.appendChild(option);
         });
-        statusSelect.addEventListener("change", () => {
+        statusSelect.addEventListener("change", async () => {
           const newStatus = statusSelect.value || "Pendiente";
-          updateDoctorRecord(rec.id, { status: newStatus });
+          await updateDoctorRecord(rec.id, { status: newStatus });
         });
         statusField.appendChild(statusLabel);
         statusField.appendChild(statusSelect);
