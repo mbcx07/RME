@@ -630,6 +630,13 @@
       );
     }
 
+    // Convierte un id en uno seguro para Firestore (sin '/')
+    function makeFirestoreId(id) {
+      return (id || "")
+        .toString()
+        .replace(/\//g, "_");
+    }
+
     function formatDateTime(date) {
       if (!date) return "";
       const d = new Date(date);
@@ -670,9 +677,17 @@
 
     async function saveContactToFirestore(record) {
       if (!record || !record.id) return;
+
+      // Usamos un ID seguro para Firestore (sin '/')
+      const safeId = makeFirestoreId(record.id);
+
       try {
-        await setDoc(doc(db, "contacts", record.id), record, { merge: true });
-        console.log("✅ Guardado en Firestore:", record.id);
+        await setDoc(
+          doc(db, "contacts", safeId),
+          { ...record, firestoreId: safeId },
+          { merge: true }
+        );
+        console.log("✅ Guardado en Firestore:", safeId);
       } catch (error) {
         console.error("Error guardando en Firestore", error);
       }
